@@ -6,12 +6,12 @@ title: "Project Title"
 message: "If you use this software, please cite it as below."
 type: software
 authors:
-  - family-names: "Last Name"
-    given-names: "First Name"
+  - family-names: "Ravani"
+    given-names: "Jay"
     orcid: "https://orcid.org/0000-0000-0000-0000"
     affiliation: "BigGeoData & Spatial AI, Technische Hochschule Deggendorf"
-repository-code: "https://github.com/THD-Spatial-AI/github-template"
-url: "https://THD-Spatial-AI.github.io/github-template"
+repository-code: "https://github.com/THD-Spatial-AI/feedback-kit"
+url: "https://THD-Spatial-AI.github.io/feedback-kit"
 license: MIT
 version: "0.1.0"
-date-released: "2026-01-01"
+date-released: "2026-04-25"
