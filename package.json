@@ -1,0 +1,37 @@
+{
+  "name": "@thd-spatial-ai/feedback-kit",
+  "version": "0.1.0",
+  "description": "Drop-in React feedback collection — task sessions and bug reports as GitHub Issues.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "api-templates"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "clsx": "2.1.1",
+    "lucide-react": "0.487.0",
+    "tailwind-merge": "3.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "tsup": "^8",
+    "typescript": "^5"
+  }
+}
