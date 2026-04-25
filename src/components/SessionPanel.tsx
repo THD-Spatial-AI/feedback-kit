@@ -22,15 +22,16 @@ interface ScreenshotData {
 type PanelView = 'task' | 'report' | 'report_done';
 
 export interface SessionPanelProps {
-  tasks:             TestingTask[];
-  view:              string;
-  taskIndex:         number;
-  collapsed:         boolean;
-  onToggleCollapsed: () => void;
-  onNextTask:        () => void;
-  onPrevTask:        () => void;
-  apiEndpoint?:      string;
-  stepRenderers?:    StepRendererMap;
+  tasks:              TestingTask[];
+  view:               string;
+  taskIndex:          number;
+  collapsed:          boolean;
+  onToggleCollapsed:  () => void;
+  onNextTask:         () => void;
+  onPrevTask:         () => void;
+  apiEndpoint?:       string;
+  stepRenderers?:     StepRendererMap;
+  showReportButton?:  boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -103,12 +104,14 @@ export function SessionPanel({
   onToggleCollapsed,
   onNextTask,
   onPrevTask,
-  apiEndpoint:   propEndpoint,
-  stepRenderers: propRenderers,
+  apiEndpoint:      propEndpoint,
+  stepRenderers:    propRenderers,
+  showReportButton: showReportButtonProp,
 }: SessionPanelProps) {
-  const ctx         = useFeedbackKitContext();
-  const apiEndpoint = propEndpoint  ?? ctx?.apiEndpoint  ?? '/api/feedback';
-  const renderers   = propRenderers ?? ctx?.stepRenderers ?? defaultStepRenderers;
+  const ctx              = useFeedbackKitContext();
+  const apiEndpoint      = propEndpoint        ?? ctx?.apiEndpoint  ?? '/api/feedback';
+  const renderers        = propRenderers        ?? ctx?.stepRenderers ?? defaultStepRenderers;
+  const showReportButton = showReportButtonProp ?? true;
 
   const allDone = taskIndex >= tasks.length;
   const task    = allDone ? null : tasks[taskIndex];
@@ -258,49 +261,78 @@ export function SessionPanel({
   const closeReport = () => { setPanelView('task'); setReportText(''); setScreenshots([]); setError(null); };
 
   // ── Shell ─────────────────────────────────────────────────────────────────
+  //
+  // One fixed outer container (flex column) owns both the panel strip and the
+  // report button. Nothing can cover the button because they share a container.
+  // overflow:hidden on the outer clips the sliding inner div when collapsed.
 
   const shell = (children: React.ReactNode, footer?: React.ReactNode) => (
-    <>
-      <button
-        type="button"
-        onClick={() => { if (collapsed) onToggleCollapsed(); setPanelView('report'); }}
-        title={`Report an issue (current view: ${view})`}
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 rounded-full border border-orange-700/40 bg-slate-900/90 backdrop-blur-sm px-3 py-2 text-xs font-semibold text-orange-400 shadow-lg hover:bg-slate-800 hover:border-orange-600/60 cursor-pointer transition-colors"
-      >
-        <Bug className="size-3.5" /> Report an issue
-      </button>
+    // Outer: fixed column that owns the panel + button. Width = tab(2rem) + panel(20rem).
+    // overflow:hidden clips the horizontal slide animation when collapsed.
+    <div style={{
+      position: 'fixed', right: 0, top: '1rem', bottom: '1rem', zIndex: 50,
+      width: '22rem', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
 
-      <div className="fixed right-0 top-4 bottom-16 z-50 flex items-stretch">
-        <div className={cn(
-          'flex items-stretch h-full transition-transform duration-300 ease-in-out',
-          collapsed ? 'translate-x-[320px]' : 'translate-x-0',
-        )}>
+      {/* Panel strip — flex:'1 1 0' + minHeight:0 lets it shrink and give height to children */}
+      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>
+
+        {/* Sliding wrapper — same flex sizing so height propagates */}
+        <div
+          className="transition-transform duration-300 ease-in-out"
+          style={{
+            flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'stretch',
+            transform: collapsed ? 'translateX(20rem)' : 'translateX(0)',
+          }}
+        >
+          {/* Collapse tab */}
           <button
             type="button"
             onClick={onToggleCollapsed}
             title={collapsed ? 'Show tasks' : 'Hide tasks'}
-            className="w-8 shrink-0 bg-slate-800 hover:bg-slate-700 border-y border-l border-slate-600 rounded-l-xl flex flex-col items-center justify-center gap-3 py-8 cursor-pointer transition-colors shadow-xl"
+            style={{ flexShrink: 0, width: '2rem' }}
+            className="bg-slate-800 hover:bg-slate-700 border-y border-l border-slate-600 rounded-l-xl flex flex-col items-center justify-center gap-3 py-8 cursor-pointer transition-colors shadow-xl"
           >
             <ChevronLeft className={cn('size-3.5 text-slate-300 transition-transform duration-300', !collapsed && 'rotate-180')} />
-            <span className="text-[13px] font-semibold text-slate-300 select-none"
-              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+            <span
+              className="text-[13px] font-semibold text-slate-300 select-none"
+              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+            >
               Tasks
             </span>
           </button>
 
-          <div className="w-80 bg-slate-900 border-y border-l border-slate-700 shadow-2xl flex flex-col h-full overflow-hidden">
+          {/* Panel content — flex column, height is whatever the sliding wrapper gives it */}
+          <div
+            className="bg-slate-900 border-y border-l border-slate-700 shadow-2xl"
+            style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          >
             {children}
             {footer}
           </div>
         </div>
       </div>
-    </>
+
+      {/* Report button — sits below the panel, always visible */}
+      {showReportButton && (
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', padding: '0.625rem 0.75rem' }}>
+          <button
+            type="button"
+            onClick={() => { if (collapsed) onToggleCollapsed(); setPanelView('report'); }}
+            title={`Report an issue (current view: ${view})`}
+            className="flex items-center gap-1.5 rounded-full border border-orange-700/40 bg-slate-900/90 backdrop-blur-sm px-3 py-2 text-xs font-semibold text-orange-400 shadow-lg hover:bg-slate-800 hover:border-orange-600/60 cursor-pointer transition-colors"
+          >
+            <Bug className="size-3.5" /> Report an issue
+          </button>
+        </div>
+      )}
+    </div>
   );
 
   // ── Header ────────────────────────────────────────────────────────────────
 
   const panelHeader = (
-    <div className="shrink-0 px-4 pt-4 pb-0">
+    <div className="shrink-0 px-4 pt-4 pb-0" style={{ flexShrink: 0 }}>
       {panelView === 'report' || panelView === 'report_done' ? (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -338,7 +370,7 @@ export function SessionPanel({
   // ── Report form ───────────────────────────────────────────────────────────
 
   const reportBody = (
-    <div className={cn('flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3', capturing && 'opacity-0 pointer-events-none')}>
+    <div className={cn('px-4 py-4 flex flex-col gap-3', capturing && 'opacity-0 pointer-events-none')} style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
       {panelView === 'report_done' ? (
         <div className="flex flex-col items-center gap-4 py-8 text-center">
           <CheckCircle2 className="size-9 text-green-400" />
@@ -396,7 +428,7 @@ export function SessionPanel({
   // ── Task body ─────────────────────────────────────────────────────────────
 
   const taskBody = !task ? null : (
-    <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 flex flex-col gap-3">
+    <div className="px-4 pt-3 pb-4 flex flex-col gap-3" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
       <div className="border-t border-slate-700/60" />
       <div className="flex flex-col gap-3">
         {task.steps.map((step, i) => {
@@ -426,7 +458,7 @@ export function SessionPanel({
   // ── Footer ────────────────────────────────────────────────────────────────
 
   const taskFooter = (
-    <div className="px-4 pb-4 flex flex-col gap-2 shrink-0">
+    <div className="px-4 pb-4 flex flex-col gap-2 shrink-0" style={{ flexShrink: 0 }}>
       <div className="flex items-center gap-2">
         <div className="flex flex-1 items-center gap-1">
           {tasks.map((t, i) => (
@@ -464,11 +496,16 @@ export function SessionPanel({
       <div>
         <p className="text-sm font-bold text-white">All tasks complete</p>
         <p className="text-xs text-slate-400 leading-snug mt-1.5">
-          Thank you — feel free to keep exploring. Use the{' '}
-          <span className="text-orange-400 font-semibold">Report an issue</span>{' '}
-          button if you spot anything worth noting.
+          Thank you — feel free to keep exploring.
         </p>
       </div>
+      <button
+        type="button"
+        onClick={() => setPanelView('report')}
+        className="flex items-center gap-1.5 rounded-full border border-orange-700/40 px-3 py-1.5 text-xs font-semibold text-orange-400 hover:border-orange-600/60 hover:bg-slate-800 cursor-pointer transition-colors"
+      >
+        <Bug className="size-3.5" /> Report an issue
+      </button>
     </div>
   );
 
