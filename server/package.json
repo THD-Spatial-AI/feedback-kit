@@ -1,0 +1,24 @@
+{
+  "name": "@thd-spatial-ai/feedback-api",
+  "version": "0.1.0",
+  "description": "Standalone Express API for feedback-kit — creates GitHub Issues, optionally uploads screenshots to MinIO.",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20",
+    "tsx": "^4.0.0",
+    "typescript": "^5"
+  }
+}
