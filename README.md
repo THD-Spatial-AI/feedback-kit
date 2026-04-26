@@ -17,8 +17,23 @@ Each submission creates a GitHub Issue. A GitHub Actions workflow refines bug re
 
 ## Install
 
+Install directly from GitHub — no npm registry needed:
+
 ```bash
-npm install @thd-spatial-ai/feedback-kit
+npm install github:THD-Spatial-AI/feedback-kit
+```
+
+To pin to a specific release tag or commit (recommended for production):
+
+```bash
+npm install github:THD-Spatial-AI/feedback-kit#v0.1.0
+npm install github:THD-Spatial-AI/feedback-kit#abc1234
+```
+
+Your `package.json` will look like:
+
+```json
+"@thd-spatial-ai/feedback-kit": "github:THD-Spatial-AI/feedback-kit"
 ```
 
 ---
@@ -54,9 +69,9 @@ export const myTasks: TestingTask[] = [
 **3. Wrap your app and add components:**
 
 ```tsx
+import { useState } from 'react'
 import { FeedbackKitProvider, SessionPanel, FeedbackWidget } from '@thd-spatial-ai/feedback-kit'
 import { myTasks } from './tasks.config'
-import { useState } from 'react'
 
 export function App() {
   const [taskIndex, setTaskIndex] = useState(0)
@@ -73,7 +88,7 @@ export function App() {
         collapsed={collapsed}
         onToggleCollapsed={() => setCollapsed(c => !c)}
         onNextTask={() => setTaskIndex(i => i + 1)}
-        onPrevTask={() => setTaskIndex(i => i - 1)}
+        onPrevTask={() => setTaskIndex(i => Math.max(0, i - 1))}
       />
 
       <FeedbackWidget view="MyComponent" />
