@@ -113,7 +113,23 @@ markdown_extensions:
 # Page tree
 nav:
   - Home: index.md
-  - Feedback Pipeline: feedback-pipeline.md
+  - Getting Started:
+    - Quick Start: getting-started/quick-start.md
+    - Installation: getting-started/installation.md
+    - Vercel Deployment: getting-started/vercel-deployment.md
+    - API Template: getting-started/api-template.md
+  - Components:
+    - SessionPanel: components/session-panel.md
+    - FeedbackWidget: components/feedback-widget.md
+    - Provider: components/provider.md
+  - Extending:
+    - Custom Step Types: extending/custom-step-types.md
+    - Submission Hooks: extending/submission-hooks.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Feedback Pipeline: feedback-pipeline.md
+    - Self-Hosting: architecture/self-hosting.md
+  - API Reference: api-reference.md
 
 # Mermaid — load explicitly so diagrams render on GitHub Pages.
 # Material for MkDocs attempts a dynamic import at runtime which can silently
