@@ -1,0 +1,59 @@
+# Generates GitHub user story issues from accumulated session feedback.
+# Run this manually after a testing phase is complete.
+#
+# What this workflow does:
+#   1. Fetches all open issues labelled session-data (filtered by date window)
+#   2. Groups them by task label (task-1, task-2, …)
+#   3. Aggregates step completions, yes/no answers, and ratings per task
+#   4. Calls GitHub Models (gpt-4o) to write a user story per task
+#   5. Creates one [user-story] issue per task, tagged with the phase label
+#   6. Tags the source session issues with the phase label for traceability
+#   7. On re-run with the same phase, closes old stories and creates updated ones
+#
+# Required secrets: none (GITHUB_TOKEN is auto-provided by Actions)
+#
+# Setup: copy workflow-templates/scripts/generate-user-stories.mjs to
+#        scripts/generate-user-stories.mjs in your repository, then customise
+#        the TASKS map inside it to match your task config.
+
+name: Generate user stories from session feedback
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: >
+          Phase identifier — used as a label on user story issues, e.g. "phase-1-onboarding".
+          Must be unique per testing round. Re-using the same name regenerates the stories.
+        required: true
+      since:
+        description: 'Only include sessions created on or after this date (YYYY-MM-DD). Leave blank for all time.'
+        required: false
+        default: ''
+      until:
+        description: 'Only include sessions created before this date (YYYY-MM-DD). Leave blank for today.'
+        required: false
+        default: ''
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write    # create and update issues
+      contents: read   # checkout repo to run the script
+      models: read     # GitHub Models API (gpt-4o)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate user stories
+        env:
+          GH_TOKEN:          ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PHASE:             ${{ inputs.phase }}
+          SINCE:             ${{ inputs.since }}
+          UNTIL:             ${{ inputs.until }}
+        run: node scripts/generate-user-stories.mjs

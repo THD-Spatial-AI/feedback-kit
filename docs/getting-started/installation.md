@@ -88,12 +88,56 @@ Create these labels in your target repository. The API applies them automaticall
 
 ## GitHub Actions workflows
 
-Copy these two files from [`api-templates/`](https://github.com/THD-Spatial-AI/feedback-kit/tree/main/api-templates) into your repository's `.github/workflows/` directory:
+Copy the files from [`workflow-templates/`](https://github.com/THD-Spatial-AI/feedback-kit/tree/main/workflow-templates) into your repository. There are three workflows and one Node.js script.
 
-| File | What it does |
-|---|---|
-| `add-to-org-project.yml` | Adds `[Session]` issues to your project board |
-| `refine-feedback.yml` | Sends `[Feedback]` issues to GPT-4o and creates a refined `[Issue]` ticket |
+### Step 1 — Copy the workflow files
+
+Copy these into `.github/workflows/` in your repo:
+
+| File | Trigger | What it does |
+|---|---|---|
+| `refine-feedback.yml` | Auto — `[Feedback]` issue opened | Sends raw bug reports to GPT-4o and creates a structured `[Issue]` ticket |
+| `add-to-org-project.yml` | Auto — any issue or PR opened | Adds items to your GitHub Projects v2 board |
+| `generate-user-stories.yml` | Manual (`workflow_dispatch`) | Aggregates session feedback and generates user story issues per testing phase |
+
+### Step 2 — Copy the analysis script
+
+Copy `workflow-templates/scripts/generate-user-stories.mjs` to `scripts/generate-user-stories.mjs` in your repo. This script is called by `generate-user-stories.yml`.
+
+**Customise the `TASKS` map** inside the script to match your task config — it maps task labels (`task-1`, `task-2`, …) to titles and goal descriptions. The script uses these to give the LLM context when writing user stories.
+
+```js
+// scripts/generate-user-stories.mjs
+const TASKS = {
+  'task-1': { title: 'First impressions', goal: 'land on the app and find something to explore' },
+  'task-2': { title: 'Core workflow',     goal: 'complete the main user journey'                },
+  // add one entry per task in your tasks.config.ts
+};
+```
+
+### Step 3 — Customise the workflows
+
+Open each workflow file and update the marked `# CUSTOMISE` comments:
+
+- **`refine-feedback.yml`** — replace the generic product description in the system prompt with your app name and a one-paragraph description of what it does. This gives the LLM context to write accurate bug reports.
+- **`add-to-org-project.yml`** — replace `YOUR_ORG` and `YOUR_PROJECT_NUMBER` with your GitHub org and project board number.
+
+### Step 4 — Add required secrets
+
+| Secret | Required by | How to create |
+|---|---|---|
+| `ADD_TO_PROJECT_PAT` | `add-to-org-project.yml`, `refine-feedback.yml` | Fine-grained PAT with **Projects: read/write** for your org |
+
+No other secrets are needed — `GITHUB_TOKEN` is auto-provided by Actions and covers both the GitHub REST API and GitHub Models API (the `models: read` permission is declared in each workflow).
+
+### Running user story generation
+
+Once sessions are collected, trigger `generate-user-stories.yml` from **Actions → Run workflow**:
+
+- **`phase`** — a short identifier for this testing round, e.g. `phase-1-onboarding`. Used as a label on the generated issues. Re-using the same name regenerates stories for that phase.
+- **`since` / `until`** — optional date window (`YYYY-MM-DD`) to restrict which sessions are included. Leave both blank to include all open session issues.
+
+Each task with at least one session produces one user story issue tagged `user-story`, the phase label, and the task label. Session issues are tagged with the phase label for traceability.
 
 ---
 

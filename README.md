@@ -11,7 +11,13 @@ Drop-in React components for collecting structured user feedback as GitHub Issue
 | `<SessionPanel>` | Slide-out panel — guided task walkthrough with typed steps (todo, rating, yes/no, question) |
 | `<FeedbackWidget>` | Floating button — 4-step bug report form with screenshot capture and crop |
 
-Each submission creates a GitHub Issue. A GitHub Actions workflow refines bug reports using GPT-4o into structured developer tickets.
+Each submission creates a GitHub Issue. Three GitHub Actions workflows automate the downstream processing:
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `refine-feedback.yml` | Auto | Rewrites raw `[Feedback]` bug reports into structured `[Issue]` tickets using GPT-4o |
+| `add-to-org-project.yml` | Auto | Adds issues and PRs to your GitHub Projects v2 board |
+| `generate-user-stories.yml` | Manual | Aggregates `[Session]` feedback by testing phase and task, and generates user story issues using GPT-4o |
 
 ---
 
@@ -46,7 +52,18 @@ Your `package.json` will look like:
 GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO, BLOB_READ_WRITE_TOKEN
 ```
 
-**2. Define your tasks** — create a `tasks.config.ts` in your app:
+**2. Copy the workflow templates** — from [`workflow-templates/`](workflow-templates/) into your repo:
+
+```
+.github/workflows/refine-feedback.yml       ← copy as-is, customise the system prompt
+.github/workflows/add-to-org-project.yml    ← set your org and project number
+.github/workflows/generate-user-stories.yml ← copy as-is
+scripts/generate-user-stories.mjs           ← copy, then update the TASKS map
+```
+
+Add one secret: `ADD_TO_PROJECT_PAT` — a fine-grained PAT with **Projects: read/write**. No other secrets are needed; `GITHUB_TOKEN` is auto-provided.
+
+**3. Define your tasks** — create a `tasks.config.ts` in your app:
 
 ```ts
 import type { TestingTask } from '@thd-spatial-ai/feedback-kit'

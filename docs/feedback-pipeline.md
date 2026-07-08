@@ -6,30 +6,34 @@ End-to-end system for collecting, storing, and triaging user feedback — from a
 
 ## How it works
 
-There are **two entry points** and they produce **two different issue types**. Both go through the same API layer, but are handled differently downstream.
+The pipeline has three phases: **collection** (in-app components → GitHub Issues), **triage** (automatic AI refinement), and **synthesis** (manual user story generation per testing phase).
 
 ```mermaid
 flowchart TD
     A(["User"])
 
-    A --> B["Session Panel\n(task-based)"]
-    A --> C["Feedback Widget\n(quick report)"]
+    A --> B["Session Panel<br>(task-based)"]
+    A --> C["Feedback Widget<br>(quick report)"]
 
-    B --> D["POST /api/feedback\nfeedbackType: 'session'"]
-    C --> E["POST /api/feedback\nfeedbackType: 'issue'"]
+    B --> D["POST /api/feedback<br>feedbackType: 'session'"]
+    C --> E["POST /api/feedback<br>feedbackType: 'issue'"]
 
     subgraph API ["API layer (Vercel / Express)"]
-        D --> F["Upload screenshots\nBlob storage"]
+        D --> F["Upload screenshots<br>Blob storage"]
         E --> F
         F --> G["GitHub Issues API"]
     end
 
-    G --> H["[Session] issue"]
-    G --> I["[Feedback] issue"]
+    G --> H["[Session] issue<br>labels: session-data, task-N"]
+    G --> I["[Feedback] issue<br>labels: user-feedback, ux"]
 
-    subgraph Actions ["GitHub Actions"]
-        H --> J["add-to-org-project.yml\n→ Project board"]
-        I --> K["refine-feedback.yml\n→ GPT-4o rewrite\n→ [Issue] on board\n→ close original"]
+    subgraph Actions ["GitHub Actions — automatic"]
+        H --> J["add-to-org-project.yml<br>→ Project board"]
+        I --> K["refine-feedback.yml<br>→ GPT-4o rewrite<br>→ [Issue] on board<br>→ close original"]
+    end
+
+    subgraph Synthesis ["GitHub Actions — manual trigger"]
+        H --> L["generate-user-stories.yml<br>Phase + date window<br>→ aggregate sessions by task<br>→ GPT-4o per task<br>→ [user-story] issues"]
     end
 ```
 
@@ -209,6 +213,53 @@ The refined issue preserves the original screenshots and folds the raw feedback 
 |---|---|---|
 | `ADD_TO_PROJECT_PAT` | `project` (org level) | Both workflows |
 | `GITHUB_TOKEN` | Automatic | Provided by Actions runtime |
+
+---
+
+## Phase 3 — User story generation
+
+After collecting enough session feedback for a testing round, trigger `generate-user-stories.yml` from **Actions → Run workflow**. It reads all open `session-data` issues, groups them by task, and synthesises one user story issue per task.
+
+### Phase inputs
+
+| Input | Required | Description |
+|---|---|---|
+| `phase` | Yes | Short identifier, e.g. `phase-1-onboarding`. Becomes a label on all output issues. Re-using the same name regenerates stories for that phase (old ones are closed first). |
+| `since` | No | ISO date — only include sessions created on or after this date |
+| `until` | No | ISO date — only include sessions up to this date |
+
+### Output per task
+
+One GitHub issue with labels `user-story`, the phase label, and the task label:
+
+```
+## User Story
+As a **[user type]**, I want to **[goal]**, so that **[benefit]**.
+
+## Acceptance Criteria
+- [ ] ...
+
+## Evidence — phase-1
+**Sessions:** #45, #46, #47 ...
+**Action step completion:** 12 of 14 steps completed
+
+| Question | Yes | No | Not answered |
+...
+
+## Priority
+**Medium** — average rating 2.8/5; several users did not answer the comprehension question.
+```
+
+### Phase lifecycle
+
+| Scenario | What happens |
+|---|---|
+| First run for a phase | User story issues created; session issues tagged with phase label |
+| Same phase, more sessions — re-run | Old user story issues closed, new ones created with updated data |
+| New testing round with different tasks | Trigger with a new phase name; new user stories created independently |
+
+!!! info "Customise the TASKS map"
+    The script (`scripts/generate-user-stories.mjs`) contains a `TASKS` map that provides the LLM with each task's title and goal. Update this map whenever your task config changes between phases.
 
 ---
 
