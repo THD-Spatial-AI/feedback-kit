@@ -133,6 +133,9 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+# Editor-local workspace settings
+.vscode/
+
 # pnpm
 .pnpm-store
 
