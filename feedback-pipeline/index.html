@@ -958,6 +958,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#phase-3-user-story-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3 — User story generation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3 — User story generation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-per-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output per task
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#payload-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1124,28 +1174,32 @@
 <p>End-to-end system for collecting, storing, and triaging user feedback — from an in-app interaction to a structured card on the organisation project board, with no manual steps.</p>
 <hr />
 <h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<p>There are <strong>two entry points</strong> and they produce <strong>two different issue types</strong>. Both go through the same API layer, but are handled differently downstream.</p>
+<p>The pipeline has three phases: <strong>collection</strong> (in-app components → GitHub Issues), <strong>triage</strong> (automatic AI refinement), and <strong>synthesis</strong> (manual user story generation per testing phase).</p>
 <pre class="mermaid"><code>flowchart TD
     A(["User"])
 
-    A --&gt; B["Session Panel\n(task-based)"]
-    A --&gt; C["Feedback Widget\n(quick report)"]
+    A --&gt; B["Session Panel&lt;br&gt;(task-based)"]
+    A --&gt; C["Feedback Widget&lt;br&gt;(quick report)"]
 
-    B --&gt; D["POST /api/feedback\nfeedbackType: 'session'"]
-    C --&gt; E["POST /api/feedback\nfeedbackType: 'issue'"]
+    B --&gt; D["POST /api/feedback&lt;br&gt;feedbackType: 'session'"]
+    C --&gt; E["POST /api/feedback&lt;br&gt;feedbackType: 'issue'"]
 
     subgraph API ["API layer (Vercel / Express)"]
-        D --&gt; F["Upload screenshots\nBlob storage"]
+        D --&gt; F["Upload screenshots&lt;br&gt;Blob storage"]
         E --&gt; F
         F --&gt; G["GitHub Issues API"]
     end
 
-    G --&gt; H["[Session] issue"]
-    G --&gt; I["[Feedback] issue"]
+    G --&gt; H["[Session] issue&lt;br&gt;labels: session-data, task-N"]
+    G --&gt; I["[Feedback] issue&lt;br&gt;labels: user-feedback, ux"]
 
-    subgraph Actions ["GitHub Actions"]
-        H --&gt; J["add-to-org-project.yml\n→ Project board"]
-        I --&gt; K["refine-feedback.yml\n→ GPT-4o rewrite\n→ [Issue] on board\n→ close original"]
+    subgraph Actions ["GitHub Actions — automatic"]
+        H --&gt; J["add-to-org-project.yml&lt;br&gt;→ Project board"]
+        I --&gt; K["refine-feedback.yml&lt;br&gt;→ GPT-4o rewrite&lt;br&gt;→ [Issue] on board&lt;br&gt;→ close original"]
+    end
+
+    subgraph Synthesis ["GitHub Actions — manual trigger"]
+        H --&gt; L["generate-user-stories.yml&lt;br&gt;Phase + date window&lt;br&gt;→ aggregate sessions by task&lt;br&gt;→ GPT-4o per task&lt;br&gt;→ [user-story] issues"]
     end</code></pre>
 <hr />
 <h2 id="entry-points">Entry points<a class="headerlink" href="#entry-points" title="Permanent link">&para;</a></h2>
@@ -1431,6 +1485,81 @@
 </tbody>
 </table>
 <hr />
+<h2 id="phase-3-user-story-generation">Phase 3 — User story generation<a class="headerlink" href="#phase-3-user-story-generation" title="Permanent link">&para;</a></h2>
+<p>After collecting enough session feedback for a testing round, trigger <code>generate-user-stories.yml</code> from <strong>Actions → Run workflow</strong>. It reads all open <code>session-data</code> issues, groups them by task, and synthesises one user story issue per task.</p>
+<h3 id="phase-inputs">Phase inputs<a class="headerlink" href="#phase-inputs" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>phase</code></td>
+<td>Yes</td>
+<td>Short identifier, e.g. <code>phase-1-onboarding</code>. Becomes a label on all output issues. Re-using the same name regenerates stories for that phase (old ones are closed first).</td>
+</tr>
+<tr>
+<td><code>since</code></td>
+<td>No</td>
+<td>ISO date — only include sessions created on or after this date</td>
+</tr>
+<tr>
+<td><code>until</code></td>
+<td>No</td>
+<td>ISO date — only include sessions up to this date</td>
+</tr>
+</tbody>
+</table>
+<h3 id="output-per-task">Output per task<a class="headerlink" href="#output-per-task" title="Permanent link">&para;</a></h3>
+<p>One GitHub issue with labels <code>user-story</code>, the phase label, and the task label:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>## User Story
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>As a **[user type]**, I want to **[goal]**, so that **[benefit]**.
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>## Acceptance Criteria
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>- [ ] ...
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>## Evidence — phase-1
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>**Sessions:** #45, #46, #47 ...
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>**Action step completion:** 12 of 14 steps completed
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>| Question | Yes | No | Not answered |
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>...
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>## Priority
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>**Medium** — average rating 2.8/5; several users did not answer the comprehension question.
+</span></code></pre></div>
+<h3 id="phase-lifecycle">Phase lifecycle<a class="headerlink" href="#phase-lifecycle" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First run for a phase</td>
+<td>User story issues created; session issues tagged with phase label</td>
+</tr>
+<tr>
+<td>Same phase, more sessions — re-run</td>
+<td>Old user story issues closed, new ones created with updated data</td>
+</tr>
+<tr>
+<td>New testing round with different tasks</td>
+<td>Trigger with a new phase name; new user stories created independently</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition info">
+<p class="admonition-title">Customise the TASKS map</p>
+<p>The script (<code>scripts/generate-user-stories.mjs</code>) contains a <code>TASKS</code> map that provides the LLM with each task's title and goal. Update this map whenever your task config changes between phases.</p>
+</div>
+<hr />
 <h2 id="payload-reference">Payload reference<a class="headerlink" href="#payload-reference" title="Permanent link">&para;</a></h2>
 <p>Both entry points POST to the same endpoint. The <code>feedbackType</code> field determines downstream behaviour.</p>
 <table>
@@ -1545,7 +1674,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 25, 2026 03:06:13 UTC">April 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 8, 2026 16:35:56 UTC">July 8, 2026</span>
   </span>
 
     

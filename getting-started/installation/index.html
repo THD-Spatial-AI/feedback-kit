@@ -663,6 +663,67 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="GitHub Actions workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-copy-the-workflow-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Copy the workflow files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-copy-the-analysis-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Copy the analysis script
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-customise-the-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Customise the workflows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-add-required-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Add required secrets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-user-story-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running user story generation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1141,45 +1202,96 @@
 </table>
 <hr />
 <h2 id="github-actions-workflows">GitHub Actions workflows<a class="headerlink" href="#github-actions-workflows" title="Permanent link">&para;</a></h2>
-<p>Copy these two files from <a href="https://github.com/THD-Spatial-AI/feedback-kit/tree/main/api-templates"><code>api-templates/</code></a> into your repository's <code>.github/workflows/</code> directory:</p>
+<p>Copy the files from <a href="https://github.com/THD-Spatial-AI/feedback-kit/tree/main/workflow-templates"><code>workflow-templates/</code></a> into your repository. There are three workflows and one Node.js script.</p>
+<h3 id="step-1-copy-the-workflow-files">Step 1 — Copy the workflow files<a class="headerlink" href="#step-1-copy-the-workflow-files" title="Permanent link">&para;</a></h3>
+<p>Copy these into <code>.github/workflows/</code> in your repo:</p>
 <table>
 <thead>
 <tr>
 <th>File</th>
+<th>Trigger</th>
 <th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>add-to-org-project.yml</code></td>
-<td>Adds <code>[Session]</code> issues to your project board</td>
+<td><code>refine-feedback.yml</code></td>
+<td>Auto — <code>[Feedback]</code> issue opened</td>
+<td>Sends raw bug reports to GPT-4o and creates a structured <code>[Issue]</code> ticket</td>
 </tr>
 <tr>
-<td><code>refine-feedback.yml</code></td>
-<td>Sends <code>[Feedback]</code> issues to GPT-4o and creates a refined <code>[Issue]</code> ticket</td>
+<td><code>add-to-org-project.yml</code></td>
+<td>Auto — any issue or PR opened</td>
+<td>Adds items to your GitHub Projects v2 board</td>
+</tr>
+<tr>
+<td><code>generate-user-stories.yml</code></td>
+<td>Manual (<code>workflow_dispatch</code>)</td>
+<td>Aggregates session feedback and generates user story issues per testing phase</td>
 </tr>
 </tbody>
 </table>
+<h3 id="step-2-copy-the-analysis-script">Step 2 — Copy the analysis script<a class="headerlink" href="#step-2-copy-the-analysis-script" title="Permanent link">&para;</a></h3>
+<p>Copy <code>workflow-templates/scripts/generate-user-stories.mjs</code> to <code>scripts/generate-user-stories.mjs</code> in your repo. This script is called by <code>generate-user-stories.yml</code>.</p>
+<p><strong>Customise the <code>TASKS</code> map</strong> inside the script to match your task config — it maps task labels (<code>task-1</code>, <code>task-2</code>, …) to titles and goal descriptions. The script uses these to give the LLM context when writing user stories.</p>
+<div class="language-js highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// scripts/generate-user-stories.mjs</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">TASKS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="s1">&#39;task-1&#39;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;First impressions&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">goal</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;land on the app and find something to explore&#39;</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="s1">&#39;task-2&#39;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Core workflow&#39;</span><span class="p">,</span><span class="w">     </span><span class="nx">goal</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;complete the main user journey&#39;</span><span class="w">                </span><span class="p">},</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="c1">// add one entry per task in your tasks.config.ts</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">};</span>
+</span></code></pre></div>
+<h3 id="step-3-customise-the-workflows">Step 3 — Customise the workflows<a class="headerlink" href="#step-3-customise-the-workflows" title="Permanent link">&para;</a></h3>
+<p>Open each workflow file and update the marked <code># CUSTOMISE</code> comments:</p>
+<ul>
+<li><strong><code>refine-feedback.yml</code></strong> — replace the generic product description in the system prompt with your app name and a one-paragraph description of what it does. This gives the LLM context to write accurate bug reports.</li>
+<li><strong><code>add-to-org-project.yml</code></strong> — replace <code>YOUR_ORG</code> and <code>YOUR_PROJECT_NUMBER</code> with your GitHub org and project board number.</li>
+</ul>
+<h3 id="step-4-add-required-secrets">Step 4 — Add required secrets<a class="headerlink" href="#step-4-add-required-secrets" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Secret</th>
+<th>Required by</th>
+<th>How to create</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ADD_TO_PROJECT_PAT</code></td>
+<td><code>add-to-org-project.yml</code>, <code>refine-feedback.yml</code></td>
+<td>Fine-grained PAT with <strong>Projects: read/write</strong> for your org</td>
+</tr>
+</tbody>
+</table>
+<p>No other secrets are needed — <code>GITHUB_TOKEN</code> is auto-provided by Actions and covers both the GitHub REST API and GitHub Models API (the <code>models: read</code> permission is declared in each workflow).</p>
+<h3 id="running-user-story-generation">Running user story generation<a class="headerlink" href="#running-user-story-generation" title="Permanent link">&para;</a></h3>
+<p>Once sessions are collected, trigger <code>generate-user-stories.yml</code> from <strong>Actions → Run workflow</strong>:</p>
+<ul>
+<li><strong><code>phase</code></strong> — a short identifier for this testing round, e.g. <code>phase-1-onboarding</code>. Used as a label on the generated issues. Re-using the same name regenerates stories for that phase.</li>
+<li><strong><code>since</code> / <code>until</code></strong> — optional date window (<code>YYYY-MM-DD</code>) to restrict which sessions are included. Leave both blank to include all open session issues.</li>
+</ul>
+<p>Each task with at least one session produces one user story issue tagged <code>user-story</code>, the phase label, and the task label. Session issues are tagged with the phase label for traceability.</p>
 <hr />
 <h2 id="local-development">Local development<a class="headerlink" href="#local-development" title="Permanent link">&para;</a></h2>
 <p>When you are iterating on the feedback-kit source itself (not just using it), pointing Vite directly at the local source gives you instant hot-reload with no build step.</p>
 <p><strong>1. Add a Vite alias</strong> in <code>vite.config.ts</code>:</p>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">import</span><span class="w"> </span><span class="nx">path</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;path&#39;</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineConfig</span><span class="p">({</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nx">resolve</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nx">alias</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="s1">&#39;@&#39;</span><span class="o">:</span><span class="w"> </span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;./src&#39;</span><span class="p">),</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="c1">// Resolve the package to local source instead of node_modules</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">      </span><span class="s1">&#39;@thd-spatial-ai/feedback-kit&#39;</span><span class="o">:</span><span class="w"> </span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;../feedback-kit/src/index.ts&#39;</span><span class="p">),</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="p">})</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">import</span><span class="w"> </span><span class="nx">path</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;path&#39;</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineConfig</span><span class="p">({</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nx">resolve</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="nx">alias</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">      </span><span class="s1">&#39;@&#39;</span><span class="o">:</span><span class="w"> </span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;./src&#39;</span><span class="p">),</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">      </span><span class="c1">// Resolve the package to local source instead of node_modules</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">      </span><span class="s1">&#39;@thd-spatial-ai/feedback-kit&#39;</span><span class="o">:</span><span class="w"> </span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;../feedback-kit/src/index.ts&#39;</span><span class="p">),</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="p">})</span>
 </span></code></pre></div>
 <p><strong>2. Update the Tailwind source</strong> to scan the local source files directly:</p>
-<div class="language-css highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">@</span><span class="k">import</span><span class="w"> </span><span class="s1">&#39;tailwindcss&#39;</span><span class="w"> </span><span class="nt">source</span><span class="o">(</span><span class="nt">none</span><span class="o">)</span><span class="p">;</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="p">@</span><span class="k">source</span><span class="w"> </span><span class="s1">&#39;../**/*.{js,ts,jsx,tsx}&#39;</span><span class="p">;</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">@</span><span class="k">source</span><span class="w"> </span><span class="s1">&#39;../../../feedback-kit/src/**/*.{js,ts,jsx,tsx}&#39;</span><span class="p">;</span>
+<div class="language-css highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">@</span><span class="k">import</span><span class="w"> </span><span class="s1">&#39;tailwindcss&#39;</span><span class="w"> </span><span class="nt">source</span><span class="o">(</span><span class="nt">none</span><span class="o">)</span><span class="p">;</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="p">@</span><span class="k">source</span><span class="w"> </span><span class="s1">&#39;../**/*.{js,ts,jsx,tsx}&#39;</span><span class="p">;</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="p">@</span><span class="k">source</span><span class="w"> </span><span class="s1">&#39;../../../feedback-kit/src/**/*.{js,ts,jsx,tsx}&#39;</span><span class="p">;</span>
 </span></code></pre></div>
 <p>With this in place, any change to <code>feedback-kit/src/</code> is reflected immediately in the consuming app — no <code>npm run build</code> needed.</p>
 
@@ -1204,7 +1316,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 26, 2026 13:05:14 UTC">April 26, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 8, 2026 16:35:56 UTC">July 8, 2026</span>
   </span>
 
     
